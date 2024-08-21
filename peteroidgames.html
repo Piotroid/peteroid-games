@@ -1,0 +1,469 @@
+<?php
+/**
+ * Instalator WordPressa
+ *
+ * @pakiet WordPress
+ * @subpackage Administracja
+ */
+
+// Sprawdzenie pewności siebie.
+jeśli (fałsz) {
+	?>
+<!Typ dokumentu html>
+<html>
+<głowa>
+	<meta http-equiv="Typ zawartości" content="tekst/html; charset=utf-8" />
+	<title>Błąd: PHP nie działa</title>
+</head>
+<klasa ciała="wp-core-ui">
+	<p id="logo"><a href="https://wordpress.org/">WordPress</a></p>
+	<h1>Błąd: PHP nie działa</h1>
+	<p>WordPress wymaga, aby Twój serwer WWW obsługiwał PHP. Twój serwer nie ma zainstalowanego PHP lub PHP jest wyłączone.</p>
+</ciało>
+</html>
+	<?php
+}
+
+/**
+ * Instalujemy WordPressa.
+ *
+ * @od 1.5.1
+ * @var wartość logiczna
+ */
+zdefiniuj( 'WP_INSTALLING', true );
+
+/** Załaduj WordPress Bootstrap */
+require_once dirname( __DIR__ ) . '/wp-load.php';
+
+/** Załaduj API aktualizacji administracji WordPress */
+require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+/** Załaduj API instalacji tłumaczenia WordPress */
+require_once ABSPATH . 'wp-admin/includes/translation-install.php';
+
+/** Załaduj wpdb */
+require_once ABSPATH . WPINC . '/class-wpdb.php';
+
+nocache_headers();
+
+$krok = isset( $_GET['krok'] ) ? (int) $_GET['krok'] : 0;
+
+/**
+ * Wyświetl nagłówek instalacji.
+ *
+ * @od 2.5.0
+ *
+ * @param ciąg $body_classes
+ */
+funkcja display_header( $body_classes = '' ) {
+	nagłówek( 'Typ zawartości: text/html; charset=utf-8' );
+	jeśli ( is_rtl() ) {
+		Klasa ciała $body_classes .= 'rtl';
+	}
+	jeśli ($body_classes) {
+		Klasa ciała = ' ' . Klasa ciała;
+	}
+	?>
+<!Typ dokumentu html>
+<html <?php atrybuty_języka(); ?>>
+<głowa>
+	<meta name="viewport" content="width=szerokość-urządzenia" />
+	<meta http-equiv="Typ zawartości" content="tekst/html; charset=utf-8" />
+	<meta name="robots" content="noindex,nofollow" />
+	<title><?php _e( 'Instalacja WordPress ›' ); ?></title>
+	<?php wp_admin_css( 'install', true ); ?>
+</head>
+<body class="wp-core-ui<?php echo $body_classes; ?>">
+<p id="logo"><?php _e( 'WordPress' ); ?></p>
+
+	<?php
+} // Koniec display_header().
+
+/**
+ * Wyświetla formularz konfiguracji instalatora.
+ *
+ * @od wersji 2.8.0
+ *
+ * @global wpdb $wpdb Obiekt abstrakcji bazy danych WordPress.
+ *
+ * @param string|null $error
+ */
+funkcja display_setup_form( $error = null ) {
+	globalny $wpdb;
+
+	$user_table = ( $wpdb->get_var( $wpdb->prepare( 'POKAŻ TABELE PODOBNE DO %s', $wpdb->esc_like( $wpdb->users ) ) ) !== null );
+
+	// Upewnij się, że witryny domyślnie pojawiają się w wyszukiwarkach.
+	Publiczny blog = 1;
+	jeśli ( isset( $_POST['weblog_title'] ) ) {
+		$blog_public = isset( $_POST['blog_public'] ) ? (int) $_POST['blog_public'] : $blog_public;
+	}
+
+	$weblog_title = isset( $_POST['weblog_title'] ) ? trim( wp_unslash( $_POST['weblog_title'] ) ) : '';
+	$user_name = isset( $_POST['user_name'] ) ? trim( wp_unslash( $_POST['user_name'] ) ) : '';
+	$admin_email = isset( $_POST['admin_email'] ) ? trim( wp_unslash( $_POST['admin_email'] ) ) : '';
+
+	jeśli ( ! is_null( $error )) {
+		?>
+<h1><?php _ex( 'Witaj', 'Cześć' ); ?></h1>
+<p class="message"><?php echo $error; ?></p>
+<?php } ?>
+<form id="setup" method="post" action="install.php?step=2" novalidate="novalidate">
+	<table class="form-table" role="prezentacja">
+		<powrót>
+			<th scope="row"><label for="weblog_title"><?php _e( 'Tytuł witryny' ); ?></label></th>
+			<td><input name="weblog_title" type="text" id="weblog_title" size="25" value="<?php echo esc_attr( $weblog_title ); ?>" /></td>
+		</tr>
+		<powrót>
+			<th scope="row"><label for="user_login"><?php _e( 'Nazwa użytkownika' ); ?></label></th>
+			<td>
+			<?php
+			jeśli ( $user_table ) {
+				_e( 'Użytkownik(i) już istnieje.' );
+				echo '<input name="user_name" type="hidden" value="admin" />';
+			} w przeciwnym razie {
+				?>
+				<input name="user_name" type="text" id="user_login" size="25" aria-describedby="user-name-desc" value="<?php echo esc_attr( sanitize_user( $user_name, true ) ); ?>" />
+				<p id="user-name-desc"><?php _e( 'Nazwy użytkowników mogą zawierać tylko znaki alfanumeryczne, spacje, podkreślenia, myślniki, kropki i symbol @.' ); ?></p>
+				<?php
+			}
+			?>
+			</td>
+		</tr>
+		<?php jeśli ( ! $user_table ) : ?>
+		<tr class="form-field form-required user-pass1-wrap">
+			<zakres="wiersz">
+				<etykieta dla="pass1">
+					<?php _e( 'Hasło' ); ?>
+				</etykieta>
+			</th>
+			<td>
+				<div class="wp-pwd">
+					<?php $initial_password = isset( $_POST['admin_password'] ) ? stripslashes( $_POST['admin_password'] ) : wp_generate_password( 18 ); ?>
+					<div class="password-input-wrapper">
+						<input type="password" name="admin_password" id="pass1" class="regular-text" autocomplete="new-password" spellcheck="false" data-reveal="1" data-pw="<?php echo esc_attr( $initial_password ); ?>" aria-describedby="pass-strength-result admin-password-desc" />
+						<div id="wynik-siły-zaliczenia" aria-live="polite"></div>
+					</div>
+					<button type="button" class="button wp-hide-pw hide-if-no-js" data-start-masked="<?php echo (int) isset( $_POST['admin_password'] ); ?>" data-toggle="0" aria-label="<?php esc_attr_e( 'Ukryj hasło' ); ?>">
+						<span class="dashicons dashicons-ukryte"></span>
+						<span class="text"><?php _e( 'Ukryj' ); ?></span>
+					</przycisk>
+				</div>
+				<p id="admin-password-desc"><span class="description ważne ukryj-jeśli-nie-js">
+				<strong><?php _e( 'Ważne:' ); ?></strong>
+				<?php /* translators: Nierozdzielna spacja zapobiega temu, aby 1Password uznał, że tekst „zaloguj” powinien wywołać monit o zapisanie hasła. */ ?>
+				<?php _e( 'Będziesz potrzebował tego hasła, aby się zalogować. Proszę przechowywać je w bezpiecznym miejscu.' ); ?></span></p>
+			</td>
+		</tr>
+		<tr class="form-field form-required user-pass2-wrap hide-if-js">
+			<zakres="wiersz">
+				<label for="pass2"><?php _e( 'Powtórz hasło' ); ?>
+					<span class="description"><?php _e( '(wymagane)' ); ?></span>
+				</etykieta>
+			</th>
+			<td>
+				<input type="password" name="admin_password2" id="pass2" autocomplete="new-password" spellcheck="false" />
+			</td>
+		</tr>
+		<tr class="pw-słaby">
+			<th scope="row"><?php _e( 'Potwierdź hasło' ); ?></th>
+			<td>
+				<etykieta>
+					<input type="checkbox" name="pw_weak" class="pw-checkbox" />
+					<?php _e( 'Potwierdź użycie słabego hasła' ); ?>
+				</etykieta>
+			</td>
+		</tr>
+		<?php koniec; ?>
+		<powrót>
+			<th scope="row"><label for="admin_email"><?php _e( 'Twój adres e-mail' ); ?></label></th>
+			<td><input name="admin_email" type="email" id="admin_email" size="25" aria-describedby="admin-email-desc" value="<?php echo esc_attr( $admin_email ); ?>" />
+			<p id="admin-email-desc"><?php _e( 'Przed kontynuowaniem sprawdź dokładnie swój adres e-mail.' ); ?></p></td>
+		</tr>
+		<powrót>
+			<th scope="row"><?php has_action( 'blog_privacy_selector' ) ? _e( 'Widoczność witryny' ) : _e( 'Widoczność w wyszukiwarkach' ); ?></th>
+			<td>
+				<zestaw pól>
+					<legend class="tekst-czytnika-ekranowego"><span>
+						<?php
+						ma_akcję( 'blog_privacy_selector' )
+							/* tłumacze: Ukryty tekst dotyczący ułatwień dostępu. */
+							? _e( 'Widoczność witryny' )
+							/* tłumacze: Ukryty tekst dotyczący ułatwień dostępu. */
+							: _e( 'Widoczność w wyszukiwarce' );
+						?>
+					</span></legenda>
+					<?php
+					jeśli ( has_action( 'blog_privacy_selector' ) ) {
+						?>
+						<input id="blog-public" type="radio" name="blog_public" value="1" <?php sprawdzone( 1, $blog_public ); ?> />
+						<label for="blog-public"><?php _e( 'Zezwalaj wyszukiwarkom na indeksowanie tej witryny' ); ?></label><br />
+						<input id="blog-norobots" type="radio" name="blog_public" aria-describedby="public-desc" value="0" <?php sprawdzone( 0, $blog_public ); ?> />
+						<label for="blog-norobots"><?php _e( 'Odradzaj wyszukiwarkom indeksowanie tej witryny' ); ?></label>
+						<p id="public-desc" class="description"><?php _e( 'Uwaga: zniechęcanie wyszukiwarek nie blokuje dostępu do Twojej witryny — to wyszukiwarki muszą spełnić Twoją prośbę.' ); ?></p>
+						<?php
+						/** Ta akcja jest udokumentowana w pliku wp-admin/options-reading.php */
+						wykonaj_akcję( 'blog_privacy_selector' );
+					} w przeciwnym razie {
+						?>
+						<label for="blog_public"><input name="blog_public" type="checkbox" id="blog_public" aria-describedby="privacy-desc" value="0" <?php selected( 0, $blog_public ); ?> />
+						<?php _e( 'Odradzaj wyszukiwarkom indeksowanie tej witryny' ); ?></label>
+						<p id="privacy-desc" class="description"><?php _e( 'Zależy od wyszukiwarek, czy uwzględnią tę prośbę.' ); ?></p>
+					<?php } ?>
+				</zestaw pól>
+			</td>
+		</tr>
+	</tabela>
+	<p class="step"><?php submit_button( __( 'Zainstaluj WordPress' ), ​​'large', 'Prześlij', false, array( 'id' => 'prześlij' ) ); ?></p>
+	<input type="hidden" name="language" value="<?php echo isset( $_REQUEST['language'] ) ? esc_attr( $_REQUEST['language'] ) : ''; ?>" />
+</formularz>
+	<?php
+} // Koniec display_setup_form().
+
+// Sprawdźmy, czy WP nie jest już zainstalowany.
+jeśli ( is_blog_installed() ) {
+	nagłówek_wyświetlania();
+	umierać(
+		'<h1>' . __( 'Już zainstalowano' ) . '</h1>' .
+		'<p>' . __( 'Wygląda na to, że WordPress został już zainstalowany. Aby przeprowadzić ponowną instalację, najpierw wyczyść stare tabele bazy danych.' ) . '</p>' .
+		'<p class="step"><a href="' . esc_url( wp_login_url() ) . '">' . __( 'Zaloguj się' ) . '</a></p>' .
+		'</body></html>'
+	);
+}
+
+/**
+ * @global string $wp_version Ciąg określający wersję WordPressa.
+ * @global string $required_php_version Wymagany ciąg znaków określający wersję PHP.
+ * @global string $required_mysql_version Wymagany ciąg znaków określający wersję MySQL.
+ * @global wpdb $wpdb Obiekt abstrakcji bazy danych WordPress.
+ */
+globalne $wp_version, $required_php_version, $required_mysql_version, $wpdb;
+
+$php_version = WERSJA_PHP;
+Wersja mysql = wersja wpdb->db_version();
+$php_compat = version_compare( $php_version, $required_php_version, '>=' );
+$mysql_compat = version_compare( $mysql_version, $required_mysql_version, '>=' ) || file_exists( WP_CONTENT_DIR . '/db.php' );
+
+Wersja_url = sprintf(
+	/* tłumacze: %s: wersja WordPressa. */
+	esc_url( __( 'https://wordpress.org/documentation/wordpress-version/version-%s/' ) ),
+	sanitize_title( $wp_version )
+);
+
+$php_update_message = '</p><p>' . sprintf(
+	/* tłumacze: %s: adres URL do strony aktualizacji PHP. */
+	__( '<a href="%s">Dowiedz się więcej o aktualizacji PHP</a>.' ),
+	esc_url( wp_get_update_php_url() )
+);
+
+$annotation = wp_get_update_php_annotation();
+
+jeśli ($annotation) {
+	$php_update_message .= '</p><p><em>' . $annotation . '</em>';
+}
+
+jeśli ( ! $mysql_compat && ! $php_compat ) {
+	$zgodność = sprintf(
+		/* translatory: 1: adres URL do informacji o wydaniu WordPressa, 2: numer wersji WordPressa, 3: minimalny wymagany numer wersji PHP, 4: minimalny wymagany numer wersji MySQL, 5: bieżący numer wersji PHP, 6: bieżący numer wersji MySQL. */
+		__( 'Nie możesz zainstalować, ponieważ <a href="%1$s">WordPress %2$s</a> wymaga wersji PHP %3$s lub nowszej i wersji MySQL %4$s lub nowszej. Używasz wersji PHP %5$s i wersji MySQL %6$s.' ),
+		Wersja_url,
+		wersja_wp,
+		wymagana_wersja_php,
+		wymagana_wersja_mysql,
+		wersja_php,
+		Wersja mysql
+	) . $php_update_message;
+} elseif ( ! $php_compat ) {
+	$zgodność = sprintf(
+		/* translatory: 1: adres URL do informacji o wydaniu WordPressa, 2: numer wersji WordPressa, 3: minimalny wymagany numer wersji PHP, 4: bieżący numer wersji PHP. */
+		__( 'Nie możesz zainstalować, ponieważ <a href="%1$s">WordPress %2$s</a> wymaga wersji PHP %3$s lub wyższej. Używasz wersji %4$s.' ),
+		Wersja_url,
+		wersja_wp,
+		wymagana_wersja_php,
+		Wersja php
+	) . $php_update_message;
+} elseif ( ! $mysql_compat ) {
+	$zgodność = sprintf(
+		/* translatory: 1: adres URL do informacji o wydaniu WordPressa, 2: numer wersji WordPressa, 3: minimalny wymagany numer wersji MySQL, 4: bieżący numer wersji MySQL. */
+		__( 'Nie można zainstalować, ponieważ <a href="%1$s">WordPress %2$s</a> wymaga wersji MySQL %3$s lub wyższej. Używasz wersji %4$s.' ),
+		Wersja_url,
+		wersja_wp,
+		wymagana_wersja_mysql,
+		Wersja mysql
+	);
+}
+
+jeśli ( ! $mysql_compat || ! $php_compat ) {
+	nagłówek_wyświetlania();
+	die( '<h1>' . __( 'Wymagania nie zostały spełnione' ) . '</h1><p>' . $compat . '</p></body></html>' );
+}
+
+jeśli ( ! is_string( $wpdb->base_prefix ) || '' === $wpdb->base_prefix ) {
+	nagłówek_wyświetlania();
+	umierać(
+		'<h1>' . __( 'Błąd konfiguracji' ) . '</h1>' .
+		'<p>' . sprintf(
+			/* tłumacze: %s: wp-config.php */
+			__( 'Plik %s ma pusty prefiks tabeli bazy danych, co nie jest obsługiwane.' ),
+			'<code>wp-config.php</code>'
+		) . '</p></body></html>'
+	);
+}
+
+// Ustaw komunikat o błędzie, jeśli opcja DO_NOT_UPGRADE_GLOBAL_TABLES nie jest ustawiona, ponieważ spowoduje to przerwanie instalacji.
+jeśli (zdefiniowano( 'NIE_AKTUALIZUJ_TABELI_GLOBALNYCH' )) {
+	nagłówek_wyświetlania();
+	umierać(
+		'<h1>' . __( 'Błąd konfiguracji' ) . '</h1>' .
+		'<p>' . sprintf(
+			/* tłumacze: %s: NIE_AKTUALIZUJ_TABELI_GLOBALNYCH */
+			__( 'Stałej %s nie można zdefiniować podczas instalacji WordPressa.' ),
+			'<code>NIE_AKTUALIZUJ_TABELI_GLOBALNYCH</code>'
+		) . '</p></body></html>'
+	);
+}
+
+/**
+ * @global string $wp_local_package Kod lokalizacji pakietu.
+ * @global WP_Locale $wp_locale Obiekt ustawień regionalnych daty i godziny WordPress.
+ */
+Język = '';
+jeśli ( ! puste( $_REQUEST['język'] ) ) {
+	$language = sanitize_locale_name( $_REQUEST['language'] );
+} elseif ( isset( $GLOBALS['wp_local_package'] ) ) {
+	$język = $GLOBALS['wp_local_package'];
+}
+
+$scripts_to_print = tablica( 'jquery' );
+
+przełącznik ( $step ) {
+	przypadek 0: // Krok 0.
+		jeśli ( wp_can_install_language_pack() && pusty( $language )) {
+			Języki = wp_get_available_translations();
+			jeśli ($languages) {
+				$scripts_to_print[] = 'wybór języka';
+				display_header( 'wybór języka' );
+				echo '<form id="setup" method="post" action="?step=1">';
+				wp_install_language_form( $languages ​​);
+				wyświetl '</form>';
+				przerwa;
+			}
+		}
+
+		// Celowo pomijamy tę opcję, jeśli nie możemy dotrzeć do interfejsu API tłumaczeń.
+
+	przypadek 1: // Krok 1, link bezpośredni lub z wyboru języka.
+		jeśli ( ! pusty( $język )) {
+			$loaded_language = wp_download_language_pack( $language );
+			jeśli ( $loaded_language ) {
+				załaduj_domyślną_domenę_tekstową( $załadowany_język );
+				$GLOBALS['wp_locale'] = nowy WP_Locale();
+			}
+		}
+
+		$scripts_to_print[] = 'profil-użytkownika';
+
+		nagłówek_wyświetlania();
+		?>
+<h1><?php _ex( 'Witaj', 'Cześć' ); ?></h1>
+<p><?php _e( 'Witamy w słynnym pięciominutowym procesie instalacji WordPressa! Wystarczy wypełnić poniższe informacje, a będziesz na dobrej drodze do korzystania z najbardziej rozszerzalnej i wydajnej platformy do publikacji osobistych na świecie.' ); ?></p>
+
+<h2><?php _e( 'Potrzebne informacje' ); ?></h2>
+<p><?php _e( 'Podaj następujące informacje. Nie martw się, zawsze możesz zmienić te ustawienia później.' ); ?></p>
+
+		<?php
+		wyświetl_formularz_konfiguracji();
+		przerwa;
+	przypadek 2:
+		jeśli ( ! empty( $language ) && load_default_textdomain( $language ) ) {
+			$loaded_language = $język;
+			$GLOBALS['wp_locale'] = nowy WP_Locale();
+		} w przeciwnym razie {
+			$loaded_language = 'pl_PL';
+		}
+
+		jeśli ( ! pusty( $wpdb->error ) ) {
+			wp_die( $wpdb->error->get_error_message() );
+		}
+
+		$scripts_to_print[] = 'profil-użytkownika';
+
+		nagłówek_wyświetlania();
+		// Wypełnij zebrane dane.
+		$weblog_title = isset( $_POST['weblog_title'] ) ? trim( wp_unslash( $_POST['weblog_title'] ) ) : '';
+		$user_name = isset( $_POST['user_name'] ) ? trim( wp_unslash( $_POST['user_name'] ) ) : '';
+		$admin_password = isset( $_POST['admin_password'] ) ? wp_unslash( $_POST['admin_password'] ) : '';
+		$admin_password_check = isset( $_POST['admin_password2'] ) ? wp_unslash( $_POST['admin_password2'] ) : '';
+		$admin_email = isset( $_POST['admin_email'] ) ? trim( wp_unslash( $_POST['admin_email'] ) ) : '';
+		$public = isset( $_POST['blog_public'] ) ? (int) $_POST['blog_public'] : 1;
+
+		// Sprawdź adres e-mail.
+		$błąd = fałsz;
+		jeśli (pusty( $user_name )) {
+			// TODO: Poka-yoke.
+			display_setup_form( __( 'Podaj prawidłową nazwę użytkownika.' ) );
+			$błąd = prawda;
+		} elseif ( sanitize_user( $user_name, true ) !== $user_name ) {
+			display_setup_form( __( 'Podana nazwa użytkownika zawiera nieprawidłowe znaki.' ) );
+			$błąd = prawda;
+		} elseif ( $admin_password !== $admin_password_check ) {
+			// TODO: Poka-yoke.
+			display_setup_form( __( 'Twoje hasła nie są takie same. Spróbuj ponownie.' ) );
+			$błąd = prawda;
+		} elseif (pusty( $admin_email )) {
+			// TODO: Poka-yoke.
+			display_setup_form( __( 'Musisz podać adres e-mail.' ) );
+			$błąd = prawda;
+		} elseif ( ! is_email( $admin_email )) {
+			// TODO: Poka-yoke.
+			display_setup_form( __( 'Przepraszamy, to nie jest prawidłowy adres e-mail. Adresy e-mail wyglądają tak: <code>username@example.com</code>.' ) );
+			$błąd = prawda;
+		}
+
+		jeśli (fałsz === $błąd) {
+			$wpdb->show_errors();
+			$result = wp_install( $weblog_title, $user_name, $admin_email, $public, '', wp_slash( $admin_password ), $loaded_language );
+			?>
+
+<h1><?php _e( 'Sukces!' ); ?></h1>
+
+<p><?php _e( 'WordPress został zainstalowany. Dziękuję i życzę miłego korzystania!' ); ?></p>
+
+<table class="form-table instalacja-pomyślna">
+	<powrót>
+		<th><?php _e( 'Nazwa użytkownika' ); ?></th>
+		<td><?php echo esc_html( sanitize_user( $user_name, true ) ); ?></td>
+	</tr>
+	<powrót>
+		<th><?php _e( 'Hasło' ); ?></th>
+		<td>
+			<?php if ( ! puste( $result['password'] ) && puste( $admin_password_check ) ) : ?>
+				<code><?php echo esc_html( $result['password'] ); ?></code><br />
+			<?php koniec; ?>
+			<p><?php echo $result['hasło_wiadomość']; ?></p>
+		</td>
+	</tr>
+</tabela>
+
+<p class="step"><a href="<?php echo esc_url( wp_login_url() ); ?>"><?php _e( 'Zaloguj się' ); ?></a></p>
+
+			<?php
+		}
+		przerwa;
+}
+
+jeśli ( ! wp_is_mobile() ) {
+	?>
+<script type="text/javascript">var t = document.getElementById('weblog_title'); jeśli (t){ t.focus(); </script>
+	<?php
+}
+
+wp_print_scripts( $scripts_to_print );
+?>
+<typ skryptu="tekst/javascript">
+jQuery( funkcja( $ ) {
+	$( '.hide-if-no-js' ).removeClass( 'hide-if-no-js' );
+} );
+</skrypt>
+</ciało>
+</html>
